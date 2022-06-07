@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Windows.ApplicationModel.Resources;
 using Windows.Storage;
 
@@ -297,7 +298,7 @@ namespace Linphone.Model {
                     dict[TransportKeyName] = EnumToTransport[proxyAddress.Transport];
                     dict[UsernameKeyName] = address.Username;
                     dict[DomainKeyName] = address.Domain;
-                    dict[OutboundProxyKeyName] = cfg.Routes.GetEnumerator().Current.ToString();
+                    dict[OutboundProxyKeyName] = cfg.Routes?.FirstOrDefault()?.ToString();
                     dict[ExpireKeyName] = String.Format("{0}", cfg.Expires);
                     AuthInfo authInfo = LinphoneManager.Instance.Core.FindAuthInfo(address.Domain, address.Username, address.Domain);
                     if (authInfo != null) {
