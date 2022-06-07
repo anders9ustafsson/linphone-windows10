@@ -54,16 +54,75 @@ namespace Linphone.Model {
         private CoreListener _coreListener;
         public bool isLinphoneRunning = false;
 
+#if __X86__
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSOglContextInfo
+        {
+            public IntPtr window;
+            public uint width;
+            public uint height;
+            public IntPtr getProcAddress;
+        };
 
+        public static void StartVideoStream(SwapChainPanel main, SwapChainPanel preview)
+        {
+            MSOglContextInfo c;
+            if (main != null)
+                c.window = Marshal.GetIUnknownForObject(main);
+            else
+                c.window = IntPtr.Zero;
+            c.getProcAddress = IntPtr.Zero;
+            c.width = 0;
+            c.height = 0;
+            IntPtr pnt = Marshal.AllocHGlobal(Marshal.SizeOf(c));
+            Marshal.StructureToPtr(c, pnt, false);
+            IntPtr oldData = LinphoneManager.Instance.Core.NativeVideoWindowId;
+            LinphoneManager.Instance.Core.NativeVideoWindowId = pnt;
+            if (oldData != IntPtr.Zero)
+            {
+                IntPtr window = ((MSOglContextInfo)Marshal.PtrToStructure<MSOglContextInfo>(oldData)).window;
+                if (window != IntPtr.Zero)
+                    Marshal.Release(window);
+                Marshal.FreeHGlobal(oldData);
+            }
+            //---------------------
+            if (preview != null)
+                c.window = Marshal.GetIUnknownForObject(preview);
+            else
+                c.window = IntPtr.Zero;
+            c.getProcAddress = IntPtr.Zero;
+            c.width = 0;
+            c.height = 0;
+            pnt = Marshal.AllocHGlobal(Marshal.SizeOf(c));
+            Marshal.StructureToPtr(c, pnt, false);
+            oldData = LinphoneManager.Instance.Core.NativePreviewWindowId;
+            LinphoneManager.Instance.Core.NativePreviewWindowId = pnt;
+            if (oldData != IntPtr.Zero)
+            {
+                IntPtr window = ((MSOglContextInfo)Marshal.PtrToStructure<MSOglContextInfo>(oldData)).window;
+                if (window != IntPtr.Zero)
+                    Marshal.Release(window);
+                Marshal.FreeHGlobal(oldData);
+            }
+        }
+
+        public static void StopVideoStream()
+        {
+            LinphoneManager.Instance.Core.NativePreviewWindowId = IntPtr.Zero;
+            LinphoneManager.Instance.Core.NativeVideoWindowId = IntPtr.Zero;
+        }
+#else
         public static void StartVideoStream(SwapChainPanel main, SwapChainPanel preview) {
             LinphoneManager.Instance.Core.NativePreviewWindowId = preview;
             LinphoneManager.Instance.Core.NativeVideoWindowId = main;
         }
+
         public static void StopVideoStream()
         {
             LinphoneManager.Instance.Core.NativePreviewWindowId = null;
             LinphoneManager.Instance.Core.NativeVideoWindowId = null;
         }
+#endif
         private PushNotificationChannel channel;
 
         #region LinphoneCore and initialization
@@ -518,7 +577,7 @@ namespace Linphone.Model {
             numberOfCameras = nbCameras;
         }
 
-        public void ToggleCameras() {
+        public async void ToggleCameras() {
             if (NumberOfCameras >= 2) {
                 String currentDevice = Core.VideoDevice;
                 Core.VideoDevice = _cameras.ElementAt((_cameras.IndexOf(Core.VideoDevice) + 1) % _cameras.Count());
@@ -526,6 +585,7 @@ namespace Linphone.Model {
                 if (Core.InCall()) {
                     Call call = Core.CurrentCall;
                     call.Update(null);
+                    await Task.Delay(1000);
                 }
             }
         }
